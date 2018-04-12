@@ -116,8 +116,8 @@ void ATheCubeningCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
-	// Bind fire event
-	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ATheCubeningCharacter::OnFire);
+	// Bind fire event - Har smidt det over i blueprint
+	//PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ATheCubeningCharacter::OnFire);
 
 	// Enable touchscreen input
 	EnableTouchscreenMovement(PlayerInputComponent);
@@ -137,52 +137,99 @@ void ATheCubeningCharacter::SetupPlayerInputComponent(class UInputComponent* Pla
 	PlayerInputComponent->BindAxis("LookUpRate", this, &ATheCubeningCharacter::LookUpAtRate);
 }
 
+void ATheCubeningCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (SpreadAmount > 0) {
+		SpreadAmount -= DeltaTime * 1;
+		if (SpreadAmount < 0) { SpreadAmount = 0; }
+	}
+
+	if (fireDelay >= 0)
+	{
+		fireDelay -= DeltaTime * 1;
+		if (fireDelay <= 0)
+		{
+			if (fireDelay < 0)
+			{
+				fireDelay = 0;
+			}
+		}
+	}
+}
+
 void ATheCubeningCharacter::OnFire()
 {
-	// try and fire a projectile
-	if (ProjectileClass != NULL)
-	{
-		UWorld* const World = GetWorld();
-		if (World != NULL)
+
+
+		// try and fire a projectile
+		if (ProjectileClass != NULL)
 		{
-			if (bUsingMotionControllers)
+			UWorld* const World = GetWorld();
+			if (World != NULL)
 			{
-				const FRotator SpawnRotation = VR_MuzzleLocation->GetComponentRotation();
-				const FVector SpawnLocation = VR_MuzzleLocation->GetComponentLocation();
-				World->SpawnActor<ATheCubeningProjectile>(ProjectileClass, SpawnLocation, SpawnRotation);
-			}
-			else
-			{
-				const FRotator SpawnRotation = GetControlRotation();
-				// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
-				const FVector SpawnLocation = ((FP_MuzzleLocation != nullptr) ? FP_MuzzleLocation->GetComponentLocation() : GetActorLocation()) + SpawnRotation.RotateVector(GunOffset);
+				if (bUsingMotionControllers)
+				{
+					const FRotator SpawnRotation = VR_MuzzleLocation->GetComponentRotation();
+					const FVector SpawnLocation = VR_MuzzleLocation->GetComponentLocation();
+					World->SpawnActor<ATheCubeningProjectile>(ProjectileClass, SpawnLocation, SpawnRotation);
+				}
+				else
+				{
+					// Code i added:
+					const float RandomX = FMath::RandRange(-5, 5);
+					const float RandomY = FMath::RandRange(-5, 5);
+					const float RandomZ = FMath::RandRange(-5, 5);
 
-				//Set Spawn Collision Handling Override
-				FActorSpawnParameters ActorSpawnParams;
-				ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
 
-				// spawn the projectile at the muzzle
-				World->SpawnActor<ATheCubeningProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
+					const FRotator SpawnRotation = GetControlRotation();
+
+					FRotator accuricy;
+
+					accuricy = SpawnRotation;
+					accuricy += FRotator(RandomX, RandomY, 0) * SpreadAmount;
+
+
+					SpreadAmount += 0.3;
+					if (SpreadAmount >= 1) SpreadAmount = 1;
+
+					// Code i added:
+
+					// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
+					const FVector SpawnLocation = ((FP_MuzzleLocation != nullptr) ? FP_MuzzleLocation->GetComponentLocation() : GetActorLocation()) + SpawnRotation.RotateVector(GunOffset);
+
+					//Set Spawn Collision Handling Override
+					FActorSpawnParameters ActorSpawnParams;
+					ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
+
+					// spawn the projectile at the muzzle - Editted the accuricy from SpawnLocation
+					World->SpawnActor<ATheCubeningProjectile>(ProjectileClass, SpawnLocation, accuricy, ActorSpawnParams);
+					fireDelay = fireRate;
+
+				}
 			}
 		}
-	}
 
-	// try and play the sound if specified
-	if (FireSound != NULL)
-	{
-		UGameplayStatics::PlaySoundAtLocation(this, FireSound, GetActorLocation());
-	}
-
-	// try and play a firing animation if specified
-	if (FireAnimation != NULL)
-	{
-		// Get the animation object for the arms mesh
-		UAnimInstance* AnimInstance = Mesh1P->GetAnimInstance();
-		if (AnimInstance != NULL)
+		// try and play the sound if specified
+		if (FireSound != NULL && !haveFired)
 		{
-			AnimInstance->Montage_Play(FireAnimation, 1.f);
+			UGameplayStatics::PlaySoundAtLocation(this, FireSound, GetActorLocation());
+			haveFired = true;
 		}
-	}
+
+		// try and play a firing animation if specified
+		if (FireAnimation != NULL )
+		{
+			// Get the animation object for the arms mesh
+			UAnimInstance* AnimInstance = Mesh1P->GetAnimInstance();
+			if (AnimInstance != NULL)
+			{
+				AnimInstance->Montage_Play(FireAnimation, 1.f);
+			}
+		}
+		
+
 }
 
 void ATheCubeningCharacter::OnResetVR()
@@ -294,6 +341,6 @@ bool ATheCubeningCharacter::EnableTouchscreenMovement(class UInputComponent* Pla
 		//PlayerInputComponent->BindTouch(EInputEvent::IE_Repeat, this, &ATheCubeningCharacter::TouchUpdate);
 		return true;
 	}
-	
+
 	return false;
 }
