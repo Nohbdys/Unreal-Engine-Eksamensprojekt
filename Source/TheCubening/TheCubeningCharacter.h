@@ -82,7 +82,7 @@ public:
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
-		float fireRate = 0.2f;
+		float fireRate = 0.5;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
 		bool haveFired = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
