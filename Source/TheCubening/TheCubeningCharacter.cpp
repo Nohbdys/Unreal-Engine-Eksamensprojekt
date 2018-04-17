@@ -50,10 +50,10 @@ ATheCubeningCharacter::ATheCubeningCharacter()
 
 	FP_MuzzleLocation = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleLocation"));
 	FP_MuzzleLocation->SetupAttachment(FP_Gun);
-	FP_MuzzleLocation->SetRelativeLocation(FVector(0.2f, 48.4f, -10.6f));
+	FP_MuzzleLocation->SetRelativeLocation(FVector(-2.0f, 48.4f, -10.6f));
 
 	// Default offset from the character location for projectiles to spawn
-	GunOffset = FVector(100.0f, 0.0f, 10.0f);
+	GunOffset = FVector(110.0f, 0.0f, 10.0f);
 
 	// Note: The ProjectileClass and the skeletal mesh/anim blueprints for Mesh1P, FP_Gun, and VR_Gun 
 	// are set in the derived blueprint asset named MyCharacter to avoid direct content references in C++.
@@ -163,72 +163,75 @@ void ATheCubeningCharacter::OnFire()
 {
 
 
-		// try and fire a projectile
-		if (ProjectileClass != NULL)
+	// try and fire a projectile
+	if (ProjectileClass != NULL)
+	{
+		UWorld* const World = GetWorld();
+		if (World != NULL)
 		{
-			UWorld* const World = GetWorld();
-			if (World != NULL)
+			if (bUsingMotionControllers)
 			{
-				if (bUsingMotionControllers)
-				{
-					const FRotator SpawnRotation = VR_MuzzleLocation->GetComponentRotation();
-					const FVector SpawnLocation = VR_MuzzleLocation->GetComponentLocation();
-					World->SpawnActor<ATheCubeningProjectile>(ProjectileClass, SpawnLocation, SpawnRotation);
-				}
-				else
-				{
-					// Code i added:
-					const float RandomX = FMath::RandRange(-5, 5);
-					const float RandomY = FMath::RandRange(-5, 5);
-					const float RandomZ = FMath::RandRange(-5, 5);
+				const FRotator SpawnRotation = VR_MuzzleLocation->GetComponentRotation();
+				const FVector SpawnLocation = VR_MuzzleLocation->GetComponentLocation();
+				World->SpawnActor<ATheCubeningProjectile>(ProjectileClass, SpawnLocation, SpawnRotation);
+			}
+			else
+			{
+				// Code i added:
+				float RandomX = FMath::RandRange(-5, 5);
+				float RandomY = FMath::RandRange(-5, 5);
+				float RandomZ = FMath::RandRange(-5, 5);
 
 
-					const FRotator SpawnRotation = GetControlRotation();
+				const FRotator SpawnRotation = GetControlRotation();
 
-					FRotator accuricy;
+				RandomX = RandomX * SpreadAmount * SpreadUpgrade;
+				RandomY = RandomY * SpreadAmount * SpreadUpgrade;
 
-					accuricy = SpawnRotation;
-					accuricy += FRotator(RandomX, RandomY, 0) * SpreadAmount;
+				FRotator accuricy;
+
+				accuricy = SpawnRotation;
+				accuricy += FRotator(RandomX + 0.5f, RandomY, 0);
+
+				if (SpreadAmount >= 1) SpreadAmount = 1;
+
+				// Code i added:
+
+				// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
+				const FVector SpawnLocation = ((FP_MuzzleLocation != nullptr) ? FP_MuzzleLocation->GetComponentLocation() : GetActorLocation()) + SpawnRotation.RotateVector(GunOffset);
 
 
-					SpreadAmount += 0.3;
-					if (SpreadAmount >= 1) SpreadAmount = 1;
+				//Set Spawn Collision Handling Override
+				FActorSpawnParameters ActorSpawnParams;
+				//ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
 
-					// Code i added:
+				// spawn the projectile at the muzzle - Editted the accuricy from SpawnLocation
+				World->SpawnActor<ATheCubeningProjectile>(ProjectileClass, SpawnLocation, accuricy, ActorSpawnParams);
+				fireDelay = fireRate;
 
-					// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
-					const FVector SpawnLocation = ((FP_MuzzleLocation != nullptr) ? FP_MuzzleLocation->GetComponentLocation() : GetActorLocation()) + SpawnRotation.RotateVector(GunOffset);
-
-					//Set Spawn Collision Handling Override
-					FActorSpawnParameters ActorSpawnParams;
-					ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
-
-					// spawn the projectile at the muzzle - Editted the accuricy from SpawnLocation
-					World->SpawnActor<ATheCubeningProjectile>(ProjectileClass, SpawnLocation, accuricy, ActorSpawnParams);
-					fireDelay = fireRate;
-
-				}
 			}
 		}
+	}
 
-		// try and play the sound if specified
-		if (FireSound != NULL && !haveFired)
-		{
-			UGameplayStatics::PlaySoundAtLocation(this, FireSound, GetActorLocation());
-			haveFired = true;
-		}
+	// try and play the sound if specified
+	if (FireSound != NULL && !haveFired)
+	{
+		SpreadAmount += 0.3;
+		UGameplayStatics::PlaySoundAtLocation(this, FireSound, GetActorLocation());
+		haveFired = true;
+	}
 
-		// try and play a firing animation if specified
-		if (FireAnimation != NULL )
+	// try and play a firing animation if specified
+	if (FireAnimation != NULL)
+	{
+		// Get the animation object for the arms mesh
+		UAnimInstance* AnimInstance = Mesh1P->GetAnimInstance();
+		if (AnimInstance != NULL)
 		{
-			// Get the animation object for the arms mesh
-			UAnimInstance* AnimInstance = Mesh1P->GetAnimInstance();
-			if (AnimInstance != NULL)
-			{
-				AnimInstance->Montage_Play(FireAnimation, 1.f);
-			}
+			AnimInstance->Montage_Play(FireAnimation, 1.f);
 		}
-		
+	}
+
 
 }
 

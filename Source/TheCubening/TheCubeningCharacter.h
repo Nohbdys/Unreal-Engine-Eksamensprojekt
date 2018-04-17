@@ -85,8 +85,12 @@ public:
 		float fireRate = 0.2f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
 		bool haveFired = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
+		float SpreadUpgrade = 2;
+
 	UFUNCTION(BlueprintCallable, Category = Gameplay)
 		void OnFire();
+
 
 protected:
 
