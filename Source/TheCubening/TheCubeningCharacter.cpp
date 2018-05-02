@@ -191,7 +191,7 @@ void ATheCubeningCharacter::OnFire()
 				FRotator accuricy;
 
 				accuricy = SpawnRotation;
-				accuricy += FRotator(RandomX + 4f, RandomY, 0);
+				accuricy += FRotator(RandomX + 4.0f, RandomY + 0.3f, 0);
 
 				if (SpreadAmount >= 1) SpreadAmount = 1;
 

@@ -152,7 +152,7 @@ public:
 	/** Returns FirstPersonCameraComponent subobject **/
 	FORCEINLINE class UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
 
-private:z
+private:
 	float SpreadAmount = 0;
 	float fireDelay = 0;
 
